@@ -55,6 +55,7 @@ def get_roboclaw(address=0x80, baudrate=38400):
 
 def print_encoder_values(roboclaw, address):
     # printing encoder values :D thank you packet_serial.py
+    enc1 = roboclaw.ReadEncM1(address)
     enc2 = roboclaw.ReadEncM2(address)
 
     if enc1[0]:
