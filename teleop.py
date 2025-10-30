@@ -26,8 +26,8 @@ def hard_motor_stop():
             addr = GLOBAL_ROBOT.connection_manager.address
             for _ in range(3):
                 try:
-                    rc.DutyM1(addr, 0)
-                    rc.DutyM2(addr, 0)
+                    rc.SpeedM1(addr, 0)
+                    rc.SpeedM2(addr, 0)
                 except Exception:
                     pass
                 try:
@@ -335,8 +335,8 @@ class ManualDriveRobot:
             return False
 
         try:
-            roboclaw.DutyM1(self.connection_manager.address, left_speed)
-            roboclaw.DutyM2(self.connection_manager.address, -right_speed)
+            roboclaw.SpeedM1(self.connection_manager.address, left_speed)
+            roboclaw.SpeedM2(self.connection_manager.address, -right_speed)
             return True
         except Exception as e:
             print(f"Error setting motor speeds: {e}")
@@ -349,8 +349,8 @@ class ManualDriveRobot:
         if roboclaw:
             for _ in range(3):
                 try:
-                    roboclaw.DutyM1(self.connection_manager.address, 0)
-                    roboclaw.DutyM2(self.connection_manager.address, 0)
+                    roboclaw.SpeedM1(self.connection_manager.address, 0)
+                    roboclaw.SpeedM2(self.connection_manager.address, 0)
                 except Exception:
                     pass
                 time.sleep(0.02)
