@@ -323,6 +323,7 @@ class ManualDriveRobot:
         return True
 
     def run_pre_drive_tests(self):
+        # code taken from test version 2 from no ros robot
         rc = self.connection_manager.get_roboclaw()
         addr = self.connection_manager.address
         if not rc:
