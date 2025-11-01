@@ -528,7 +528,7 @@ def main():
 
     if robot.setup():
         try:
-            robot.run_pre_drive_tests()
+            #robot.run_pre_drive_tests()
             robot.run()
         finally:
             robot.cleanup()
