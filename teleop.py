@@ -320,13 +320,100 @@ class ManualDriveRobot:
         print("Manual Drive setup complete!")
         # start periodic encoder printing
         self._start_encoder_printer()
-        # Run pre-drive motor alignment test before enabling manual control
-        try:
-            self._run_pre_drive_alignment_test()
-        except Exception as e:
-            print(f"Pre-drive alignment test error: {e}")
-        print("=====================\nMANUAL DRIVING AVAILABLE\nUse W/S/A/D then Enter, Q to quit\n=====================")
         return True
+
+    def run_pre_drive_tests(self):
+        rc = self.connection_manager.get_roboclaw()
+        addr = self.connection_manager.address
+        if not rc:
+            print("Pre-drive tests skipped: no RoboClaw connection")
+            return
+        print("\n================ PRE-DRIVE TESTS ================")
+        try:
+            result, version = rc.ReadVersion(addr)
+            print("Success:", result)
+            print("Version:", version)
+        except Exception as e:
+            print(f"ReadVersion error: {e}")
+        try:
+            status, volts = rc.ReadMainBatteryVoltage(addr)
+            if status:
+                print("Battery voltage:", volts / 10.0, "V")
+            else:
+                print("Battery voltage read failed")
+        except Exception as e:
+            print(f"Battery voltage read error: {e}")
+
+        print("Trying DutyM1...")
+        try:
+            for i in range(20):
+                if self.is_shutting_down:
+                    break
+                rc.DutyM1(addr, 819 * i)
+                rc.DutyM2(addr, -819 * i)
+                try:
+                    s1 = rc.ReadSpeedM1(addr)[1]
+                    s2 = rc.ReadSpeedM2(addr)[1]
+                    print(s1 + s2)
+                except Exception:
+                    pass
+                time.sleep(0.05)
+            time.sleep(5)
+            for i in range(20):
+                if self.is_shutting_down:
+                    break
+                rc.DutyM1(addr, 819 * (20 - i))
+                rc.DutyM2(addr, -819 * (20 - i))
+                try:
+                    s1 = rc.ReadSpeedM1(addr)[1]
+                    s2 = rc.ReadSpeedM2(addr)[1]
+                    print(s1 + s2)
+                except Exception:
+                    pass
+                time.sleep(0.05)
+            rc.DutyM1(addr, 0)
+            rc.DutyM2(addr, 0)
+            print("Done.")
+        except Exception as e:
+            print(f"Duty test error: {e}")
+
+        time.sleep(5)
+
+        print("Trying Speed")
+        try:
+            for i in range(20):
+                if self.is_shutting_down:
+                    break
+                rc.SpeedM1(addr, 250 * i)
+                rc.SpeedM2(addr, -250 * i)
+                try:
+                    s1 = rc.ReadSpeedM1(addr)[1]
+                    s2 = rc.ReadSpeedM2(addr)[1]
+                    print(s1 + s2)
+                except Exception:
+                    pass
+                time.sleep(0.05)
+            time.sleep(5)
+            for i in range(20):
+                if self.is_shutting_down:
+                    break
+                rc.SpeedM1(addr, 250 * (20 - i))
+                rc.SpeedM2(addr, -250 * (20 - i))
+                try:
+                    s1 = rc.ReadSpeedM1(addr)[1]
+                    s2 = rc.ReadSpeedM2(addr)[1]
+                    print(s1 + s2)
+                except Exception:
+                    pass
+                time.sleep(0.05)
+            rc.SpeedM1(addr, 0)
+            rc.SpeedM2(addr, 0)
+            print("Done")
+        except Exception as e:
+            print(f"Speed test error: {e}")
+
+        print("================ PRE-DRIVE TESTS COMPLETE ================\n")
+        print("================ MANUAL DRIVING AVAILABLE ================")
 
     def set_motor_speeds(self, left_speed, right_speed):
         if getattr(self, 'is_shutting_down', False):
@@ -362,103 +449,6 @@ class ManualDriveRobot:
                 time.sleep(0.02)
         print("Motors stopped")
 
-    def _run_pre_drive_alignment_test(self):
-        # ramp motors in duty and speed modes to verify encoder alignment
-        if getattr(self, 'is_shutting_down', False):
-            return
-        rc = self.connection_manager.get_roboclaw()
-        addr = self.connection_manager.address
-        if not rc:
-            print("No RoboClaw instance available for alignment test")
-            return
-        print("=====================")
-        print("Starting pre-drive motor alignment test")
-        # report controller version 
-        try:
-            ok, ver = rc.ReadVersion(addr)
-            print(f"Controller version: {ver if ok else 'unknown'}")
-        except Exception:
-            print("Controller version: read failed")
-        # Battery voltage (best-effort)
-        try:
-            ok_v, mv = rc.ReadMainBatteryVoltage(addr)
-            if ok_v:
-                print(f"Battery voltage: {mv / 10.0} V")
-        except Exception:
-            pass
-        # duty mode ramp
-        print("Duty mode ramp: up...")
-        for i in range(20):
-            if self.is_shutting_down:
-                break
-            try:
-                rc.DutyM1(addr, 819 * i)
-                rc.DutyM2(addr, -819 * i)
-                s1 = rc.ReadSpeedM1(addr)[1]
-                s2 = rc.ReadSpeedM2(addr)[1]
-                print(f"Duty step {i:02d}: M1={s1} M2={s2} SUM={s1 + s2}")
-            except Exception as e:
-                print(f"Duty ramp error: {e}")
-            time.sleep(0.05)
-        time.sleep(5)
-        print("Duty mode ramp: down...")
-        for i in range(20):
-            if self.is_shutting_down:
-                break
-            try:
-                val = 819 * (20 - i)
-                rc.DutyM1(addr, val)
-                rc.DutyM2(addr, -val)
-                s1 = rc.ReadSpeedM1(addr)[1]
-                s2 = rc.ReadSpeedM2(addr)[1]
-                print(f"Duty step {20 - i:02d}: M1={s1} M2={s2} SUM={s1 + s2}")
-            except Exception as e:
-                print(f"Duty ramp error: {e}")
-            time.sleep(0.05)
-        try:
-            rc.DutyM1(addr, 0)
-            rc.DutyM2(addr, 0)
-        except Exception:
-            pass
-        print("Duty mode complete")
-        time.sleep(5)
-        # speed mode ramp
-        print("Speed mode ramp: up...")
-        for i in range(20):
-            if self.is_shutting_down:
-                break
-            try:
-                rc.SpeedM1(addr, 250 * i)
-                rc.SpeedM2(addr, -250 * i)
-                s1 = rc.ReadSpeedM1(addr)[1]
-                s2 = rc.ReadSpeedM2(addr)[1]
-                print(f"Speed step {i:02d}: M1={s1} M2={s2} SUM={s1 + s2}")
-            except Exception as e:
-                print(f"Speed ramp error: {e}")
-            time.sleep(0.05)
-        time.sleep(5)
-        print("Speed mode ramp: down...")
-        for i in range(20):
-            if self.is_shutting_down:
-                break
-            try:
-                val = 250 * (20 - i)
-                rc.SpeedM1(addr, val)
-                rc.SpeedM2(addr, -val)
-                s1 = rc.ReadSpeedM1(addr)[1]
-                s2 = rc.ReadSpeedM2(addr)[1]
-                print(f"Speed step {20 - i:02d}: M1={s1} M2={s2} SUM={s1 + s2}")
-            except Exception as e:
-                print(f"Speed ramp error: {e}")
-            time.sleep(0.05)
-        try:
-            rc.SpeedM1(addr, 0)
-            rc.SpeedM2(addr, 0)
-        except Exception:
-            pass
-        print("Pre-drive motor alignment test complete")
-        print("=====================")
-
     def move_forward_one_foot(self):
         print("Command: W (forward 1 ft)")
         if self.set_motor_speeds(self.FORWARD_SPEED, self.FORWARD_SPEED):
@@ -487,7 +477,7 @@ class ManualDriveRobot:
 
     def run(self):
         print("Manual drive ready. Type commands then press Enter:")
-        print("W = forward, S = backward, A = spin left, D = spin right, Q = quit")
+        print("  W = forward 1 ft, S = backward 1 ft, A = spin left, D = spin right, Q = quit")
         try:
             while True:
                 cmd = input("> ").strip().upper()
@@ -538,6 +528,7 @@ def main():
 
     if robot.setup():
         try:
+            robot.run_pre_drive_tests()
             robot.run()
         finally:
             robot.cleanup()
